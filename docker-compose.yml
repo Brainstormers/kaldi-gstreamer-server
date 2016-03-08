@@ -1,0 +1,5 @@
+kaldi-gstreamer-server:
+  image: lucida-asr
+  command: bash -c "cd /opt/kaldi-gstreamer-server/ && ./start.sh -y sample_english_nnet2.yaml"
+  ports:
+    - "8888:8888"

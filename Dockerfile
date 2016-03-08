@@ -64,7 +64,4 @@ RUN mkdir -p /opt/kaldi-gstreamer-server
 WORKDIR /opt/kaldi-gstreamer-server
 ADD . /opt/kaldi-gstreamer-server
 
-COPY start.sh stop.sh /opt/
-
-RUN chmod +x /opt/start.sh && \
-    chmod +x /opt/stop.sh 
+RUN /opt/kaldi-gstreamer-server/test/models/download-fisher-nnet2.sh

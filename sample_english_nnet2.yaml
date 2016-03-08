@@ -5,11 +5,11 @@ decoder:
     # All the properties nested here correspond to the kaldinnet2onlinedecoder GStreamer plugin properties.
     # Use gst-inspect-1.0 ./libgstkaldionline2.so kaldinnet2onlinedecoder to discover the available properties
     use-threaded-decoder:  true
-    model : test/models/english/tedlium_nnet_ms_sp_online/final.mdl
-    word-syms : test/models/english/tedlium_nnet_ms_sp_online/words.txt
-    fst : test/models/english/tedlium_nnet_ms_sp_online/HCLG.fst
-    mfcc-config : test/models/english/tedlium_nnet_ms_sp_online/conf/mfcc.conf
-    ivector-extraction-config : test/models/english/tedlium_nnet_ms_sp_online/conf/ivector_extractor.conf
+    model : test/models/english/fisher_nnet_a_gpu_online/final.mdl
+    word-syms : test/models/english/fisher_nnet_a_gpu_online/words.txt
+    fst : test/models/english/fisher_nnet_a_gpu_online/HCLG.fst
+    mfcc-config : test/models/english/fisher_nnet_a_gpu_online/conf/mfcc.conf
+    ivector-extraction-config : test/models/english/fisher_nnet_a_gpu_online/conf/ivector_extractor.fixed.conf
     max-active: 10000
     beam: 10.0
     lattice-beam: 6.0
@@ -51,3 +51,4 @@ logging:
     root:
         level: DEBUG
         handlers: [console]
+

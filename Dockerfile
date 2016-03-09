@@ -60,6 +60,8 @@ RUN cd /opt && \
     find /opt/kaldi/src/ -type f -not -name '*.so' -delete && \
     find /opt/kaldi/tools/ -type f \( -not -name '*.so' -and -not -name '*.so*' \) -delete
 
+RUN pip install thrift
+
 RUN mkdir -p /opt/kaldi-gstreamer-server
 WORKDIR /opt/kaldi-gstreamer-server
 ADD . /opt/kaldi-gstreamer-server

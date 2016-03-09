@@ -32,7 +32,7 @@ lucida_service = os.environ.get("LUCIDA_SERVICE")
 
 if not lucida_service == None:
     sys.path.append(
-            os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
+            os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)) + "/kaldigstserver/gen-py")
 
     from thrift.transport import TTransport
     from thrift.transport import TSocket

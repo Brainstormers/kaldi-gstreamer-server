@@ -24,6 +24,40 @@ from decoder import DecoderPipeline
 from decoder2 import DecoderPipeline2
 import common
 
+import os
+
+empty_response = ''
+unknown_response = 'UNKNOWN'
+lucida_service = os.environ.get("LUCIDA_SERVICE")
+
+if not lucida_service == None:
+    sys.path.append(
+            os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
+
+    from thrift.transport import TTransport
+    from thrift.transport import TSocket
+    from thrift.transport import TSSLSocket
+    from thrift.transport import THttpClient
+    from thrift.protocol import TBinaryProtocol
+
+    from commandcenter import CommandCenter
+    from commandcenter.ttypes import *
+
+    lucida_toks = lucida_service.split(':')
+    assert len(lucida_toks) == 2
+    socket = TSocket.TSocket(lucida_toks[0], int(lucida_toks[1]))
+    transport = TTransport.TBufferedTransport(socket)
+    protocol = TBinaryProtocol.TBinaryProtocol(transport)
+    client = CommandCenter.Client(protocol)
+    transport.open()
+    def call_commandcenter(transcript):
+        qd = QueryData(textData=transcript)
+        return client.handleRequest(qd)
+
+else:
+    def call_commandcenter(transcript):
+        return unknown_response
+
 logger = logging.getLogger(__name__)
 
 CONNECT_TIMEOUT = 5
@@ -40,6 +74,7 @@ class ServerWebsocket(WebSocketClient):
     STATE_FINISHED = 100
 
     def __init__(self, uri, decoder_pipeline, post_processor, full_post_processor=None):
+        self.coachtranscript = empty_response
         self.uri = uri
         self.decoder_pipeline = decoder_pipeline
         self.post_processor = post_processor
@@ -162,6 +197,8 @@ class ServerWebsocket(WebSocketClient):
     def _on_result(self, result, final):
         if final:
             # final results are handled by _on_full_result()
+            transcript = result.decode('utf8')
+            self.coachtranscript += ' ' + transcript
             return
         self.last_decoder_message = time.time()
         if self.last_partial_result == result:
@@ -187,14 +224,12 @@ class ServerWebsocket(WebSocketClient):
     def _on_full_result(self, full_result_json):
         self.last_decoder_message = time.time()
         full_result = json.loads(full_result_json)
-        full_result['segment'] = self.num_segments
         if full_result.get("status", -1) == common.STATUS_SUCCESS:
             #logger.info("%s: Postprocessing (final=%s) result.."  % (self.request_id, final))
             logger.debug("%s: Before postprocessing: %s" % (self.request_id, full_result))
             full_result = self.post_process_full(full_result)
             logger.info("%s: Postprocessing done." % self.request_id)
             logger.debug("%s: After postprocessing: %s" % (self.request_id, full_result))
-
 
             try:
                 self.send(json.dumps(full_result))
@@ -260,17 +295,20 @@ class ServerWebsocket(WebSocketClient):
             logger.info("%s: Sending adaptation state to client..." % (self.request_id))
             adaptation_state = self.decoder_pipeline.get_adaptation_state()
             event = dict(status=common.STATUS_SUCCESS,
+                         hascoachresponse=True,
+                         coachresponse=call_commandcenter(self.coachtranscript),
                          adaptation_state=dict(id=self.request_id,
                                                value=base64.b64encode(zlib.compress(adaptation_state)),
                                                type="string+gzip+base64",
                                                time=time.strftime("%Y-%m-%dT%H:%M:%S")))
+            self.coachtranscript = empty_response
             try:
                 self.send(json.dumps(event))
             except:
                 e = sys.exc_info()[1]
                 logger.warning("Failed to send event to master: " + str(e))
         else:
-            logger.info("%s: Adaptation state not supported by the decoder, not sending it." % (self.request_id))    
+            logger.info("%s: Adaptation state not supported by the decoder, not sending it." % (self.request_id))
 
 
     def post_process(self, text):
@@ -287,7 +325,7 @@ class ServerWebsocket(WebSocketClient):
     def post_process_full(self, full_result):
         if self.full_post_processor:
             self.full_post_processor.stdin.write("%s\n\n" % json.dumps(full_result))
-            self.full_post_processor.stdin.flush()
+            self.post_processor.stdin.flush()
             lines = []
             while True:
                 l = self.full_post_processor.stdout.readline()
@@ -330,15 +368,6 @@ def main():
     if "logging" in conf:
         logging.config.dictConfig(conf["logging"])
 
-    # fork off the post-processors before we load the model into memory
-    post_processor = None
-    if "post-processor" in conf:
-        post_processor = Popen(conf["post-processor"], shell=True, stdin=PIPE, stdout=PIPE)
-
-    full_post_processor = None
-    if "full-post-processor" in conf:
-        full_post_processor = Popen(conf["full-post-processor"], shell=True, stdin=PIPE, stdout=PIPE)
-
     global USE_NNET2
     USE_NNET2 = conf.get("use-nnet2", False)
 
@@ -348,6 +377,14 @@ def main():
         decoder_pipeline = DecoderPipeline2(conf)
     else:
         decoder_pipeline = DecoderPipeline(conf)
+
+    post_processor = None
+    if "post-processor" in conf:
+        post_processor = Popen(conf["post-processor"], shell=True, stdin=PIPE, stdout=PIPE)
+
+    full_post_processor = None
+    if "full-post-processor" in conf:
+        full_post_processor = Popen(conf["full-post-processor"], shell=True, stdin=PIPE, stdout=PIPE)
 
 
     loop = GObject.MainLoop()

@@ -1,6 +1,8 @@
 kaldi-gstreamer-server:
   image: lucida-asr
   command: bash -c "cd /opt/kaldi-gstreamer-server/ && ./start.sh -y sample_english_nnet2.yaml && cd lucida-demos/ && python -m SimpleHTTPServer 80"
+#   environment:
+#     - LUCIDA_SERVICE=clarity11.eecs.umich.edu:8080
   ports:
     - "8888:8888"
     - "80:80"
